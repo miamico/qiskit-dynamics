@@ -119,7 +119,7 @@ def diag_expm(matrix: np.ndarray)->np.ndarray:
     """
 
     eig_val, eig_vec = np.linalg.eigh(matrix)
-    exp_diag = np.exp(eig_val) 
+    exp_diag = np.diag(np.exp(eig_val))
     exp_matrix = eig_vec @ exp_diag @ eig_vec.T.conj()
 
     return exp_matrix
