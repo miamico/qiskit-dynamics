@@ -104,6 +104,55 @@ def scipy_expm_solver(
         take_step, rhs_func=generator, t_span=t_span, y0=y0, max_dt=max_dt, t_eval=t_eval
     )
 
+def diag_expm(matrix: np.ndarray)->np.ndarray:
+    """
+        Exponentiate hermitean matrix M by first diagonalizing M = V D V_dag, 
+        then taking the exponential of the diagonal matrix exp(D) 
+        and building exp(M) = V exp(D) V_dag 
+
+    Args:
+        matrix: Matrix to exponentiate.
+
+    Returns:
+        np.ndarray: Matrix exponential.
+
+    """
+
+    eig_val, eig_vec = np.linalg.eigh(matrix)
+    exp_diag = np.exp(eig_val) 
+    exp_matrix = eig_vec @ exp_diag @ eig_vec.T.conj()
+
+    return exp_matrix
+
+
+def direct_diag_solver(
+    generator: Callable,
+    t_span: Array,
+    y0: Array,
+    max_dt: float,
+    t_eval: Optional[Union[Tuple, List, Array]] = None,
+):
+    """Fixed-step size matrix exponential based solver implemented with
+    exponentiation via direct diagonalization. Solves the specified problem
+     by taking steps of
+    size no larger than ``max_dt``.
+    Args:
+        generator: Generator for the LMDE.
+        t_span: Interval to solve over.
+        y0: Initial state.
+        max_dt: Maximum step size.
+        t_eval: Optional list of time points at which to return the solution.
+    Returns:
+        OdeResult: Results object.
+    """
+
+    def take_step(generator, t0, y, h):
+        eval_time = t0 + (h / 2)
+        return diag_expm(generator(eval_time) * h) @ y
+
+    return fixed_step_solver_template(
+        take_step, rhs_func=generator, t_span=t_span, y0=y0, max_dt=max_dt, t_eval=t_eval
+    )  
 
 @requires_backend("jax")
 def jax_RK4_solver(

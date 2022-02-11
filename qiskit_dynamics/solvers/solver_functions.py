@@ -48,6 +48,7 @@ from .fixed_step_solvers import (
     RK4_solver,
     jax_RK4_solver,
     scipy_expm_solver,
+    direct_diag_solver,
     jax_expm_solver,
     jax_RK4_parallel_solver,
     jax_expm_parallel_solver,
@@ -66,7 +67,7 @@ ODE_METHODS = (
     + ["RK4"]  # fixed step solvers
     + ["jax_odeint", "jax_RK4"]  # jax solvers
 )
-LMDE_METHODS = ["scipy_expm", "jax_expm", "jax_expm_parallel", "jax_RK4_parallel"]
+LMDE_METHODS = ["scipy_expm", "direct_diag_expm", "jax_expm", "jax_expm_parallel", "jax_RK4_parallel"]
 
 
 def solve_ode(
@@ -200,6 +201,11 @@ def solve_lmde(
       size to take. This solver will break integration periods into even
       sub-intervals no larger than ``max_dt``, and solve over each sub-interval via
       matrix exponentiation of the generator sampled at the midpoint.
+    -``'direct_diag_expm'``: A fixed-step matrix-exponential solver using direct diagoalization.
+      Requires additional kwarg ``max_dt`` indicating the maximum step
+      size to take. This solver will break integration periods into even
+      sub-intervals no larger than ``max_dt``, and solve over each sub-interval via
+      matrix exponentiation of the generator sampled at the midpoint.
     - ``'jax_expm'``: JAX-implemented version of ``'scipy_expm'``, with the same arguments and
       behaviour. Note that this method cannot be used for a model in sparse evaluation mode.
     - ``'jax_expm_parallel'``: Same as ``'jax_expm'``, however all loops are implemented using
@@ -250,6 +256,8 @@ def solve_lmde(
 
         return solve_ode(rhs, t_span, y0, method=method, t_eval=t_eval, **kwargs)
 
+    print("selected method is:", method)
+
     # raise error if neither an ODE_METHOD or an LMDE_METHOD
     if method not in LMDE_METHODS:
         raise QiskitError(f"Method {method} not supported by solve_lmde.")
@@ -273,6 +281,8 @@ def solve_lmde(
 
     if method == "scipy_expm":
         results = scipy_expm_solver(solver_generator, t_span, y0, t_eval=t_eval, **kwargs)
+    elif method == "direct_diag_expm":
+        results = direct_diag_solver(solver_generator, t_span, y0, t_eval=t_eval, **kwargs)
     elif method == "jax_expm":
         if isinstance(generator, BaseGeneratorModel) and "sparse" in generator.evaluation_mode:
             raise QiskitError("jax_expm cannot be used with a generator in sparse mode.")
